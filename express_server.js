@@ -42,6 +42,14 @@ app.post("/urls", (req, res) => {
   res.redirect(`/urls/${urlDBKey}`);
 });
 
+app.post("/urls/:shortURL/delete", (req, res) => {
+  if (urlDatabase[req.params.shortURL] !== undefined) {
+    console.log(`Deleted ${req.params.shortURL} : ${urlDatabase[req.params.shortURL]}`);
+    delete urlDatabase[req.params.shortURL];
+  }
+  res.redirect(`/urls`);
+});
+
 app.get("/urls/:shortURL", (req, res) => {
   const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL] };
   res.render("urls_show", templateVars);
