@@ -34,6 +34,11 @@ app.get("/urls/new", (req, res) => {
   res.render("urls_new");
 });
 
+app.post("/urls/:id", (req, res) => {
+  urlDatabase[req.params.id] = req.body.longURL;
+  res.redirect(`/urls`);
+});
+
 app.post("/urls", (req, res) => {
   console.log(req.body);
   const urlDBKey = generateRandomString();
