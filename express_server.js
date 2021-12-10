@@ -3,9 +3,14 @@ const app = express();
 const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({ extended: true }));
 const crypto = require('crypto');
-const cookieParser = require('cookie-parser');
-app.use(cookieParser());
+const cookieSession = require('cookie-session');
+app.use(cookieSession({
+  name: 'session',
+  keys: ['key1', 'key2'],
+  maxAge: 24 * 60 * 60 * 1000 // 24 hours
+}));
 const bcrypt = require('bcryptjs');
+const { getUserByEmail, urlsForUser } = require('./helper');
 const PORT = 8080;
 
 app.set('view engine', 'ejs');
@@ -50,8 +55,8 @@ app.get('/hello', (req, res) => {
 
 app.get('/urls', (req, res) => {
   let templateVars = {};
-  if (req.cookies['user_id'] !== undefined) {
-    templateVars = { urls: urlsForUser(req.cookies['user_id']), users: users[req.cookies['user_id']] };
+  if (req.session.userID !== undefined) {
+    templateVars = { urls: urlsForUser(req.session.userID, urlDatabase), users: users[req.session.userID] };
   }
   res.render('urls_index', templateVars);
 });
@@ -62,8 +67,8 @@ app.get('/urls.json', (req, res) => {
 
 app.get('/urls/new', (req, res) => {
   const templateVars = { urls: urlDatabase };
-  if (req.cookies['user_id'] !== undefined && users[req.cookies['user_id']] !== undefined) {
-    templateVars['users'] = users[req.cookies['user_id']];
+  if (req.session.userID !== undefined && users[req.session.userID] !== undefined) {
+    templateVars['users'] = users[req.session.userID];
     res.render('urls_new', templateVars);
   } else {
     res.redirect('/login');
@@ -71,8 +76,8 @@ app.get('/urls/new', (req, res) => {
 });
 
 app.post('/urls/:id', (req, res) => {
-  if (req.cookies['user_id'] !== undefined && users[req.cookies['user_id']] !== undefined) {
-    if (urlDatabase[req.params.id].userID === req.cookies['user_id']) {
+  if (req.session.userID !== undefined && users[req.session.userID] !== undefined) {
+    if (urlDatabase[req.params.id].userID === req.session.userID) {
       urlDatabase[req.params.id].longURL = req.body.longURL;
     }
   }
@@ -81,11 +86,11 @@ app.post('/urls/:id', (req, res) => {
 
 app.post('/urls', (req, res) => {
   console.log(urlDatabase);
-  if (req.cookies['user_id'] !== undefined && users[req.cookies['user_id']] !== undefined) {
+  if (req.session.userID !== undefined && users[req.session.userID] !== undefined) {
     const urlDBKey = generateRandomString();
     urlDatabase[urlDBKey] = {
       longURL: req.body.longURL,
-      userID: req.cookies['user_id']
+      userID: req.session.userID
     };
     res.redirect(`/urls/${urlDBKey}`);
   } else {
@@ -94,8 +99,8 @@ app.post('/urls', (req, res) => {
 });
 
 app.post('/urls/:shortURL/delete', (req, res) => {
-  if (req.cookies['user_id'] !== undefined && users[req.cookies['user_id']] !== undefined) {
-    if (urlDatabase[req.params.shortURL].userID === req.cookies['user_id']) {
+  if (req.session.userID !== undefined && users[req.session.userID] !== undefined) {
+    if (urlDatabase[req.params.shortURL].userID === req.session.userID) {
       console.log(`Deleted ${req.params.shortURL} : ${urlDatabase[req.params.shortURL]}`);
       delete urlDatabase[req.params.shortURL];
     }
@@ -104,9 +109,9 @@ app.post('/urls/:shortURL/delete', (req, res) => {
 });
 
 app.get('/urls/:shortURL', (req, res) => {
-  if (req.cookies['user_id'] !== undefined && users[req.cookies['user_id']] !== undefined) {
-    if (urlDatabase[req.params.shortURL].userID === req.cookies['user_id']) {
-      const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL, email: users[req.cookies['user_id']].id };
+  if (req.session.userID !== undefined && users[req.session.userID] !== undefined) {
+    if (urlDatabase[req.params.shortURL].userID === req.session.userID) {
+      const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL, email: users[req.session.userID].id };
       res.render('urls_show', templateVars);
     } else {
       res.redirect('/urls');
@@ -136,19 +141,24 @@ app.get('/login', (req, res) => {
 
 app.post('/login', (req, res) => {
   if (req.body.email !== undefined && req.body.password !== undefined) {
-    const doesUserExist = checkEmailExists(req.body.email);
+    const doesUserExist = getUserByEmail(req.body.email, users);
     if (doesUserExist && doesUserExist.email === req.body.email) {
       if (bcrypt.compareSync(req.body.password, doesUserExist.password)) {
-        res.cookie('user_id', doesUserExist.id);
+        req.session.userID = doesUserExist.id;
         res.redirect(`/urls`);
+      } else {
+        res.status(403).send("username or password incorrect");
       }
+    } else {
+      res.status(403).send("username or password incorrect");
     }
+  } else {
+    res.status(403).send("username or password incorrect");
   }
-  res.status(403).send("username or password incorrect");
 });
 
 app.post('/logout', (req, res) => {
-  res.clearCookie('user_id');
+  req.session = null;
   res.redirect(`/urls`);
 });
 
@@ -158,7 +168,7 @@ app.get('/register', (req, res) => {
 
 app.post('/register', (req, res) => {
   if (req.body.email !== undefined && req.body.password !== undefined) {
-    if (checkEmailExists(req.body.email)) {
+    if (getUserByEmail(req.body.email, users)) {
       res.status(400).send('Email already registered');
     } else {
       const randomID = generateRandomString();
@@ -167,31 +177,12 @@ app.post('/register', (req, res) => {
         email: req.body.email,
         password: bcrypt.hashSync(req.body.password, 10)
       };
-      res.cookie('user_id', randomID);
+      req.session.userID = randomID;
       // console.log(users);
       res.redirect('/urls');
     }
   }
 });
-
-const checkEmailExists = (email) => {
-  for (const user of Object.values(users)) {
-    if (user.email === email) {
-      return user;
-    }
-  }
-  return undefined;
-};
-
-const urlsForUser = (id) => {
-  let urlFiltered = {};
-  for (const [uKey, uValue] of Object.entries(urlDatabase)) {
-    if (uValue.userID === id) {
-      urlFiltered[uKey] = uValue;
-    }
-  }
-  return urlFiltered;
-};
 
 app.listen(PORT, () => {
   console.log(`Tiny app listening on port ${PORT}!`);
