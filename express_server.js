@@ -5,6 +5,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 const crypto = require('crypto');
 const cookieParser = require('cookie-parser');
 app.use(cookieParser());
+const bcrypt = require('bcryptjs');
 const PORT = 8080;
 
 app.set('view engine', 'ejs');
@@ -56,7 +57,7 @@ app.get('/urls', (req, res) => {
 });
 
 app.get('/urls.json', (req, res) => {
-  res.json(urlDatabase);
+  res.json({ ...urlDatabase, ...users });
 });
 
 app.get('/urls/new', (req, res) => {
@@ -137,7 +138,7 @@ app.post('/login', (req, res) => {
   if (req.body.email !== undefined && req.body.password !== undefined) {
     const doesUserExist = checkEmailExists(req.body.email);
     if (doesUserExist && doesUserExist.email === req.body.email) {
-      if (doesUserExist.password === req.body.password) {
+      if (bcrypt.compareSync(req.body.password, doesUserExist.password)) {
         res.cookie('user_id', doesUserExist.id);
         res.redirect(`/urls`);
       }
@@ -164,7 +165,7 @@ app.post('/register', (req, res) => {
       users[randomID] = {
         id: randomID,
         email: req.body.email,
-        password: req.body.password
+        password: bcrypt.hashSync(req.body.password, 10)
       };
       res.cookie('user_id', randomID);
       // console.log(users);
