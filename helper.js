@@ -17,7 +17,12 @@ const urlsForUser = (id, urlDatabase) => {
   return urlFiltered;
 };
 
+const validUser = (req, users) => {
+  return req.session.userID !== undefined && users[req.session.userID] !== undefined;
+};
+
 module.exports = {
   getUserByEmail,
-  urlsForUser
+  urlsForUser,
+  validUser
 };

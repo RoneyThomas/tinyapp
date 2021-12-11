@@ -7,7 +7,7 @@ const bcrypt = require('bcryptjs');
 const methodOverride = require('method-override');
 
 
-const { getUserByEmail, urlsForUser } = require('./helper');
+const { getUserByEmail, urlsForUser, validUser } = require('./helper');
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieSession({
@@ -45,7 +45,7 @@ const users = {
 };
 
 app.get('/', (req, res) => {
-  if (req.session.userID !== undefined && users[req.session.userID] !== undefined) {
+  if (validUser(req, users)) {
     res.redirect('/urls/');
   } else {
     res.redirect('/login');
@@ -71,7 +71,7 @@ app.get('/urls.json', (req, res) => {
 
 app.get('/urls/new', (req, res) => {
   const templateVars = { urls: urlDatabase };
-  if (req.session.userID !== undefined && users[req.session.userID] !== undefined) {
+  if (validUser(req, users)) {
     templateVars.users = users[req.session.userID];
     res.render('urls_new', templateVars);
   } else {
@@ -80,7 +80,7 @@ app.get('/urls/new', (req, res) => {
 });
 
 app.put('/urls/:id', (req, res) => {
-  if (req.session.userID !== undefined && users[req.session.userID] !== undefined) {
+  if (validUser(req, users)) {
     if (urlDatabase[req.params.id] !== undefined && urlDatabase[req.params.id].userID === req.session.userID) {
       urlDatabase[req.params.id].longURL = req.body.longURL;
       res.redirect(`/urls`);
@@ -103,7 +103,7 @@ app.put('/urls/:id', (req, res) => {
 
 app.post('/urls', (req, res) => {
   console.log(urlDatabase);
-  if (req.session.userID !== undefined && users[req.session.userID] !== undefined) {
+  if (validUser(req, users)) {
     const urlDBKey = generateRandomString();
     urlDatabase[urlDBKey] = {
       longURL: req.body.longURL,
@@ -117,7 +117,7 @@ app.post('/urls', (req, res) => {
 });
 
 app.delete('/urls/:shortURL', (req, res) => {
-  if (req.session.userID !== undefined && users[req.session.userID] !== undefined) {
+  if (validUser(req, users)) {
     if (urlDatabase[req.params.shortURL].userID === req.session.userID) {
       console.log(`Deleted ${req.params.shortURL} : ${urlDatabase[req.params.shortURL]}`);
       delete urlDatabase[req.params.shortURL];
@@ -139,7 +139,7 @@ app.delete('/urls/:shortURL', (req, res) => {
 });
 
 app.get('/urls/:shortURL', (req, res) => {
-  if (req.session.userID !== undefined && users[req.session.userID] !== undefined) {
+  if (validUser(req, users)) {
     if (urlDatabase[req.params.shortURL] !== undefined && urlDatabase[req.params.shortURL].userID === req.session.userID) {
       const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL, users: users[req.session.userID] };
       res.render('urls_show', templateVars);
@@ -179,7 +179,7 @@ app.get('/u/:shortURL', (req, res) => {
 });
 
 app.get('/login', (req, res) => {
-  if (req.session.userID !== undefined && users[req.session.userID] !== undefined) {
+  if (validUser(req, users)) {
     res.redirect(`/urls`);
   } else {
     res.render('login');
@@ -208,7 +208,7 @@ app.post('/logout', (req, res) => {
 });
 
 app.get('/register', (req, res) => {
-  if (req.session.userID !== undefined && users[req.session.userID] !== undefined) {
+  if (validUser(req, users)) {
     res.redirect(`/urls`);
   } else {
     res.render('register');
