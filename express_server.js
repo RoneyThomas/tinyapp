@@ -7,7 +7,7 @@ const bcrypt = require('bcryptjs');
 const methodOverride = require('method-override');
 
 
-const { getUserByEmail, urlsForUser, validUser } = require('./helper');
+const { getUserByEmail, urlsForUser, validUser, generateRandomString } = require('./helper');
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieSession({
@@ -239,7 +239,3 @@ app.post('/register', (req, res) => {
 app.listen(PORT, () => {
   console.log(`Tiny app listening on port ${PORT}!`);
 });
-
-const generateRandomString = () => {
-  return crypto.randomBytes(4).toString('hex');
-};
