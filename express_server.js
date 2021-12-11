@@ -90,14 +90,14 @@ app.put('/urls/:id', (req, res) => {
         users: users[req.session.userID],
         heading: `No URL found for ${users[req.session.userID].email}`
       };
-      res.render('url_not_found', errorMessage);
+      res.render('error', errorMessage);
     }
   } else {
     // user is not logged in
     const errorMessage = {
       heading: 'Not Logged In'
     };
-    res.render('url_not_found', errorMessage);
+    res.render('error', errorMessage);
   }
 });
 
@@ -127,14 +127,14 @@ app.delete('/urls/:shortURL', (req, res) => {
       const errorMessage = {
         heading: `No URL found for ${users[req.session.userID].email}`
       };
-      res.render('url_not_found', errorMessage);
+      res.render('error', errorMessage);
     }
   } else {
     // user is not logged in
     const errorMessage = {
       heading: 'Not Logged In'
     };
-    res.render('url_not_found', errorMessage);
+    res.render('error', errorMessage);
   }
 });
 
@@ -149,14 +149,14 @@ app.get('/urls/:shortURL', (req, res) => {
         users: users[req.session.userID],
         heading: `No URL found for ${users[req.session.userID].email}`
       };
-      res.render('url_not_found', errorMessage);
+      res.render('error', errorMessage);
     }
   } else {
     // user is not logged in
     const errorMessage = {
       heading: 'Not Logged In'
     };
-    res.render('url_not_found', errorMessage);
+    res.render('error', errorMessage);
   }
 });
 
@@ -174,7 +174,7 @@ app.get('/u/:shortURL', (req, res) => {
     const errorMessage = {
       heading: 'URL Not Found'
     };
-    res.status(404).render('url_not_found', errorMessage);
+    res.status(404).render('error', errorMessage);
   }
 });
 
@@ -199,7 +199,7 @@ app.post('/login', (req, res) => {
   const errorMessage = {
     heading: 'username or password incorrect'
   };
-  res.status(403).render('url_not_found', errorMessage);
+  res.status(403).render('error', errorMessage);
 });
 
 app.post('/logout', (req, res) => {
@@ -221,7 +221,7 @@ app.post('/register', (req, res) => {
       const errorMessage = {
         heading: 'Email already registered'
       };
-      res.status(400).render('url_not_found', errorMessage);
+      res.status(400).render('error', errorMessage);
     } else {
       const randomID = generateRandomString();
       users[randomID] = {
