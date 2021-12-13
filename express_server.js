@@ -4,9 +4,10 @@ const bodyParser = require('body-parser');
 const cookieSession = require('cookie-session');
 const bcrypt = require('bcryptjs');
 const methodOverride = require('method-override');
+const cookieParser = require('cookie-parser');
 
 
-const { getUserByEmail, urlsForUser, validUser, generateRandomString } = require('./helper');
+const { getUserByEmail, urlsForUser, validUser, generateRandomString, getDateTime } = require('./helper');
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieSession({
@@ -14,6 +15,7 @@ app.use(cookieSession({
   keys: ['key1', 'key2'],
   maxAge: 24 * 60 * 60 * 1000 // 24 hours
 }));
+app.use(cookieParser());
 app.set('view engine', 'ejs');
 app.use(methodOverride('_method'));
 
@@ -43,6 +45,11 @@ const users = {
   }
 };
 
+const analytics = {
+  urlsVisitCount: {},
+  urlsUniqiueVisitCount: {}
+};
+
 app.get('/', (req, res) => {
   if (validUser(req, users)) {
     res.redirect('/urls/');
@@ -65,7 +72,7 @@ app.get('/urls', (req, res) => {
 });
 
 app.get('/urls.json', (req, res) => {
-  res.json({ ...urlDatabase, ...users });
+  res.json({ ...urlDatabase, ...users, ...analytics });
 });
 
 app.get('/urls/new', (req, res) => {
@@ -101,13 +108,14 @@ app.put('/urls/:id', (req, res) => {
 });
 
 app.post('/urls', (req, res) => {
-  console.log(urlDatabase);
   if (validUser(req, users)) {
     const urlDBKey = generateRandomString();
     urlDatabase[urlDBKey] = {
       longURL: req.body.longURL,
       userID: req.session.userID
     };
+    analytics.urlsVisitCount[urlDBKey] = [];
+    analytics.urlsUniqiueVisitCount[urlDBKey] = [];
     res.redirect(`/urls/${urlDBKey}`);
   } else {
     // If the user is not logged in
@@ -118,8 +126,9 @@ app.post('/urls', (req, res) => {
 app.delete('/urls/:shortURL', (req, res) => {
   if (validUser(req, users)) {
     if (urlDatabase[req.params.shortURL].userID === req.session.userID) {
-      console.log(`Deleted ${req.params.shortURL} : ${urlDatabase[req.params.shortURL]}`);
       delete urlDatabase[req.params.shortURL];
+      delete analytics.urlsVisitCount[req.params.shortURL];
+      delete analytics.urlsUniqiueVisitCount[req.params.shortURL];
       res.redirect('/urls');
     } else {
       // user is logged it but does not own the URL with the given ID
@@ -140,7 +149,13 @@ app.delete('/urls/:shortURL', (req, res) => {
 app.get('/urls/:shortURL', (req, res) => {
   if (validUser(req, users)) {
     if (urlDatabase[req.params.shortURL] !== undefined && urlDatabase[req.params.shortURL].userID === req.session.userID) {
-      const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL].longURL, users: users[req.session.userID] };
+      const templateVars = {
+        shortURL: req.params.shortURL,
+        longURL: urlDatabase[req.params.shortURL].longURL,
+        users: users[req.session.userID],
+        uniqueVistors: analytics.urlsUniqiueVisitCount[req.params.shortURL].length,
+        visitors: analytics.urlsVisitCount[req.params.shortURL]
+      };
       res.render('urls_show', templateVars);
     } else {
       // user is logged it but does not own the URL with the given ID
@@ -160,12 +175,19 @@ app.get('/urls/:shortURL', (req, res) => {
 });
 
 app.get('/u/:shortURL', (req, res) => {
-  console.log(req.params.shortURL);
-  console.log(urlDatabase);
+  if (req.cookies['visitor_id'] === undefined) {
+    res.cookie('visitor_id', generateRandomString());
+  }
   if (urlDatabase[req.params.shortURL] !== undefined) {
     let longURL = urlDatabase[req.params.shortURL].longURL;
     if (!longURL.toLowerCase().includes('http://') && !longURL.toLowerCase().includes('https://')) {
       longURL = 'http://' + longURL;
+    }
+    if (analytics.urlsVisitCount[req.params.shortURL] !== undefined) {
+      analytics.urlsVisitCount[req.params.shortURL].push([req.cookies['visitor_id'], getDateTime()]);
+      if (!analytics.urlsUniqiueVisitCount[req.params.shortURL].includes(req.cookies['visitor_id'])) {
+        analytics.urlsUniqiueVisitCount[req.params.shortURL].push(req.cookies['visitor_id']);
+      }
     }
     res.redirect(longURL);
   } else {
@@ -229,7 +251,6 @@ app.post('/register', (req, res) => {
         password: bcrypt.hashSync(req.body.password, 10)
       };
       req.session.userID = randomID;
-      // console.log(users);
       res.redirect('/urls');
     }
   }

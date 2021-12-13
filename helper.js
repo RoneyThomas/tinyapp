@@ -27,9 +27,37 @@ const generateRandomString = () => {
   return crypto.randomBytes(4).toString('hex');
 };
 
+const getDateTime = () => {
+  let dt = new Date();
+
+  // current date
+  // adjust 0 before single digit date
+  let date = ("0" + dt.getDate()).slice(-2);
+
+  // current month
+  let month = ("0" + (dt.getMonth() + 1)).slice(-2);
+
+  // current year
+  let year = dt.getFullYear();
+
+  // current hours
+  let hours = dt.getHours();
+
+  // current minutes
+  let minutes = dt.getMinutes();
+
+  // current seconds
+  let seconds = dt.getSeconds();
+
+  // prints date & time in YYYY-MM-DD HH:MM:SS format
+  return `${year}-${month}-${date} ${hours}:${minutes}:${seconds}`;
+
+};
+
 module.exports = {
   getUserByEmail,
   urlsForUser,
   validUser,
-  generateRandomString
+  generateRandomString,
+  getDateTime
 };

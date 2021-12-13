@@ -18,6 +18,10 @@
         <p class="card-text">Short URL: <a href="/u/<%= shortURL %>">
             <%= shortURL %>
           </a></p>
+        <h6 class="card-title">Unique Visitors : <%= uniqueVistors %>
+            </h5>
+            <h6 class="card-title">Total Visitors : <%= `${visitors.length}` %>
+                </h5>
       </div>
       <div class="card-footer text-muted">
         <h3>Edit</h3>
@@ -30,6 +34,26 @@
           </div>
         </form>
       </div>
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">Timestamp</th>
+            <th scope="col">Visitor ID</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for(let visitor of Object.values(visitors)) { %>
+            <tr>
+              <td>
+                <%= `${visitor[1]}` %>
+              </td>
+              <td>
+                <%= `${visitor[0]}` %>
+              </td>
+            </tr>
+            <% } %>
+        </tbody>
+      </table>
     </div>
     <!-- Bootstrap JS -->
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
