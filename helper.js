@@ -1,3 +1,5 @@
+const crypto = require('crypto');
+
 const getUserByEmail = (email, users) => {
   for (const user of Object.values(users)) {
     if (user.email === email) {
